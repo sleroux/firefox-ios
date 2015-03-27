@@ -140,20 +140,21 @@ private class CustomCell: UICollectionViewCell {
             y: container.frame.origin.y + AppConstants.ToolbarHeight + AppConstants.StatusBarHeight,
             width: container.frame.width,
             height: container.frame.height - 2 * AppConstants.ToolbarHeight - AppConstants.StatusBarHeight) // Don't let our cell overlap either of the toolbars
+
         title.alpha = 0
-        setNeedsLayout()
     }
 
     func showAt(offsetY: Int, container: UIView, table: UICollectionView) {
         margin = TabTrayControllerUX.Margin
+
         container.insertSubview(self, atIndex: container.subviews.count)
 
         frame = CGRect(x: self.frame.origin.x,
             y: self.frame.origin.y,
             width: container.frame.width / 2 - TabTrayControllerUX.Margin * 1.5,
             height: TabTrayControllerUX.CellHeight)
+
         title.alpha = 1
-        setNeedsLayout()
     }
 
     var tab: Browser? {
@@ -326,11 +327,12 @@ class TabTrayController: UIViewController, UITabBarDelegate, UICollectionViewDel
         let flowLayout = UICollectionViewFlowLayout()
         collectionView = UICollectionView(frame: view.frame, collectionViewLayout: flowLayout)
         collectionView.dataSource = self
-        collectionView.delegate = self
+        // collectionView.delegate = self
         collectionView.registerClass(CustomCell.self, forCellWithReuseIdentifier: CellIdentifier)
         collectionView.contentInset = UIEdgeInsets(top: AppConstants.StatusBarHeight + AppConstants.ToolbarHeight, left: 0, bottom: 0, right: 0)
 
         collectionView.backgroundColor = TabTrayControllerUX.BackgroundColor
+
 
         view.addSubview(collectionView)
         view.addSubview(navBar)
@@ -404,9 +406,9 @@ extension TabTrayController: Transitionable {
     private func getTransitionCell(options: TransitionOptions, browser: Browser?) -> CustomCell {
         var transitionCell: CustomCell
         if let cell = options.moving as? CustomCell {
+            println("Reuse")
             transitionCell = cell
         } else {
-
             transitionCell = CustomCell(frame: options.container!.frame)
             options.moving = transitionCell
         }
@@ -414,7 +416,7 @@ extension TabTrayController: Transitionable {
         if let browser = browser {
             transitionCell.background.image = screenshotHelper.takeScreenshot(browser, aspectRatio: 0, quality: 1)
         } else {
-            transitionCell.background.image = nil
+            transitionCell.backgroundColor = UIColor.greenColor()
         }
         transitionCell.titleText.text = browser?.displayTitle
 
@@ -426,12 +428,14 @@ extension TabTrayController: Transitionable {
         if let container = options.container {
             let cell = getTransitionCell(options, browser: tabManager.selectedTab)
             // TODO: Smoothly animate the corner radius to 0.
-            cell.backgroundHolder.layer.cornerRadius = TabTrayControllerUX.CornerRadius
+            // cell.backgroundHolder.layer.cornerRadius = TabTrayControllerUX.CornerRadius
             cell.showFullscreen(container, table: collectionView)
+            cell.layoutIfNeeded()
         }
 
         // Fade the toolbar
         navBar.alpha = 0
+
         collectionView.backgroundColor = UIColor.clearColor()
     }
 
@@ -439,8 +443,10 @@ extension TabTrayController: Transitionable {
         if let container = options.container {
             // Create a fake cell that is at the selected index
             let cell = getTransitionCell(options, browser: tabManager.selectedTab)
-            cell.backgroundHolder.layer.cornerRadius = TabTrayControllerUX.CornerRadius
+            container.addSubview(cell)
+            // cell.backgroundHolder.layer.cornerRadius = TabTrayControllerUX.CornerRadius
             cell.showAt(tabManager.selectedIndex, container: container, table: collectionView)
+            cell.layoutIfNeeded()
         }
 
         // Scroll the toolbar on from the top
@@ -452,7 +458,7 @@ extension TabTrayController: Transitionable {
 
     func transitionableWillComplete(transitionable: Transitionable, options: TransitionOptions) {
         if let cell = options.moving {
-            cell.removeFromSuperview()
+            // cell.removeFromSuperview()
         }
     }
 }
