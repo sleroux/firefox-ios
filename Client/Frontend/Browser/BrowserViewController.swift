@@ -1045,24 +1045,26 @@ extension BrowserViewController : UIViewControllerTransitioningDelegate {
 
 extension BrowserViewController : Transitionable {
     func transitionableWillShow(transitionable: Transitionable, options: TransitionOptions) {
-        view.transform = CGAffineTransformIdentity
         view.alpha = 1
+
+        toolbar.transform = CGAffineTransformIdentity
+
         // Move all the webview's off screen
         for i in 0..<tabManager.count {
             let tab = tabManager.getTab(i)
-            tab.webView.frame = CGRect(x: tab.webView.frame.width, y: 0, width: tab.webView.frame.width, height: tab.webView.frame.height)
+            tab.webView.hidden = true
         }
     }
 
     func transitionableWillHide(transitionable: Transitionable, options: TransitionOptions) {
-        if let cell = options.moving {
-            view.transform = CGAffineTransformMakeTranslation(0, cell.frame.origin.y - toolbar.frame.height)
-        }
         view.alpha = 0
+
+        toolbar.transform = CGAffineTransformTranslate(CGAffineTransformIdentity, 0, toolbar.frame.height)
+
         // Move all the webview's off screen
         for i in 0..<tabManager.count {
             let tab = tabManager.getTab(i)
-            tab.webView.frame = CGRect(x: tab.webView.frame.width, y: 0, width: tab.webView.frame.width, height: tab.webView.frame.height)
+            tab.webView.hidden = true
         }
     }
 
@@ -1070,7 +1072,7 @@ extension BrowserViewController : Transitionable {
         // Move all the webview's back on screen
         for i in 0..<tabManager.count {
             let tab = tabManager.getTab(i)
-            tab.webView.frame = CGRect(x: 0, y: 0, width: tab.webView.frame.width, height: tab.webView.frame.height)
+            tab.webView.hidden = false
         }
     }
 }

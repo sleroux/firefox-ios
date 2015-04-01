@@ -40,21 +40,21 @@ class TransitionManager: NSObject, UIViewControllerAnimatedTransitioning  {
                 from.transitionableWillShow(from, options: options)
 
                 let duration = self.transitionDuration(transitionContext)
-                UIView.animateWithDuration(duration, animations: {
-                    println("Start animation")
-                    to.transitionableWillShow(to, options: options)
-                    from.transitionableWillHide(from, options: options)
-                }, completion: { finished in
-                    to.transitionableWillComplete(to, options: options)
-                    from.transitionableWillComplete(from, options: options)
-                    transitionContext.completeTransition(true)
-                    println("End animation")
+
+                UIView.animateWithDuration(duration, delay: 0, usingSpringWithDamping: 0.95, initialSpringVelocity: 0, options: nil, animations: { () -> Void in
+                        to.transitionableWillShow(to, options: options)
+                        from.transitionableWillHide(from, options: options)
+                    }, completion: { finished in
+                        to.transitionableWillComplete(to, options: options)
+                        from.transitionableWillComplete(from, options: options)
+                        transitionContext.completeTransition(true)
                 })
+
             }
         }
     }
 
     func transitionDuration(transitionContext: UIViewControllerContextTransitioning) -> NSTimeInterval {
-        return 2
+        return 0.35
     }
 }

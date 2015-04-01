@@ -9,12 +9,14 @@ private struct TabTrayControllerUX {
     static let CornerRadius = CGFloat(4.0)
     static let BackgroundColor = UIColor(red: 0.21, green: 0.23, blue: 0.25, alpha: 1)
     static let TextBoxHeight = CGFloat(32.0)
-    static let CellHeight = TextBoxHeight * 8
+    static let CellHeight = TextBoxHeight * 6
     static let Margin = CGFloat(15)
     // This color has been manually adjusted to match background layer with iOS translucency effect.
-    static let ToolbarBarTintColor = UIColor(red: 0.35, green: 0.37, blue: 0.39, alpha: 0)
+    static let ToolbarBarTintColor = UIColor(red: 0.16, green: 0.18, blue: 0.20, alpha: 1)
     static let TabTitleTextColor = UIColor.blackColor()
     static let TabTitleTextFont = AppConstants.DefaultSmallFont
+    static let NumberOfColumnsCompact = 2
+    static let NumberOfColumnsRegular = 3
 }
 
 // UIcollectionViewController doesn't let us specify a style for recycling views. We override the default style here.
@@ -33,10 +35,6 @@ private class CustomCell: UICollectionViewCell {
     override init(frame: CGRect) {
 
         self.backgroundHolder = UIView()
-        self.backgroundHolder.layer.shadowColor = UIColor.blackColor().CGColor
-        self.backgroundHolder.layer.shadowOffset = CGSizeMake(0, 2.0)
-        self.backgroundHolder.layer.shadowOpacity = 0.95
-        self.backgroundHolder.layer.shadowRadius = 1.0
         self.backgroundHolder.layer.cornerRadius = TabTrayControllerUX.CornerRadius
         self.backgroundHolder.clipsToBounds = true
 
@@ -52,6 +50,11 @@ private class CustomCell: UICollectionViewCell {
 
         self.title = UIView()
         self.title.backgroundColor = UIColor.whiteColor()
+        self.title.layer.shadowColor = UIColor.blackColor().CGColor
+        self.title.layer.shadowOpacity = 0.25
+        self.title.layer.shadowOffset = CGSize(width: 0, height: 0.5)
+        self.title.layer.shadowRadius = 0.5
+        self.title.layer.shadowPath = UIBezierPath(rect: self.title.bounds).CGPath
 
         self.titleText = UILabel()
         self.titleText.textColor = TabTrayControllerUX.TabTitleTextColor
@@ -77,18 +80,17 @@ private class CustomCell: UICollectionViewCell {
         backgroundHolder.addSubview(self.title)
         backgroundHolder.addSubview(innerStroke)
 
-        backgroundColor = UIColor.clearColor()
-
         self.titleText.addObserver(self, forKeyPath: "contentSize", options: .New, context: nil)
         setupFrames()
 
-        self.animator.originalCenter = CGPoint(x: UIScreen.mainScreen().bounds.width / 2, y: TabTrayControllerUX.CellHeight / 2)
+        self.animator.originalCenter = CGPoint(x: self.frame.width / 2, y: self.frame.height / 2)
     }
 
     func setupFrames() {
+
         // Will need to be updated when moving to collection view using collection view's sizeForItem
-        let w = UIScreen.mainScreen().bounds.width - (2 * margin)
-        let h = TabTrayControllerUX.CellHeight - margin
+        let w = frame.width
+        let h = frame.height
 
         backgroundHolder.frame = CGRect(x: margin,
             y: margin,
@@ -112,6 +114,7 @@ private class CustomCell: UICollectionViewCell {
         innerStroke.frame = background.frame
 
         verticalCenter(titleText)
+
     }
 
     required init(coder aDecoder: NSCoder) {
@@ -134,27 +137,26 @@ private class CustomCell: UICollectionViewCell {
     }
 
     func showFullscreen(container: UIView, table: UICollectionView) {
-        margin = 0
-        container.insertSubview(self, atIndex: container.subviews.count)
-        frame = CGRect(x: container.frame.origin.x,
-            y: container.frame.origin.y + AppConstants.ToolbarHeight + AppConstants.StatusBarHeight,
-            width: container.frame.width,
-            height: container.frame.height - 2 * AppConstants.ToolbarHeight - AppConstants.StatusBarHeight) // Don't let our cell overlap either of the toolbars
 
-        title.alpha = 0
+        frame = CGRect(x: 0,
+                        y: container.frame.origin.y + AppConstants.ToolbarHeight + AppConstants.StatusBarHeight,
+                        width: container.frame.width,
+                        height: container.frame.height - (AppConstants.ToolbarHeight * 2 + AppConstants.StatusBarHeight))
+
+        container.insertSubview(self, atIndex: container.subviews.count)
+        setupFrames()
+
     }
 
     func showAt(offsetY: Int, container: UIView, table: UICollectionView) {
-        margin = TabTrayControllerUX.Margin
+
+        let scrollOffset = table.contentOffset.y + table.contentInset.top
+        if let attr = table.collectionViewLayout.layoutAttributesForItemAtIndexPath(NSIndexPath(forItem: offsetY, inSection: 0)) {
+            frame = CGRectOffset(attr.frame, -container.frame.origin.x, -container.frame.origin.y + AppConstants.ToolbarHeight + AppConstants.StatusBarHeight - scrollOffset)
+        }
 
         container.insertSubview(self, atIndex: container.subviews.count)
-
-        frame = CGRect(x: self.frame.origin.x,
-            y: self.frame.origin.y,
-            width: container.frame.width / 2 - TabTrayControllerUX.Margin * 1.5,
-            height: TabTrayControllerUX.CellHeight)
-
-        title.alpha = 1
+        setupFrames()
     }
 
     var tab: Browser? {
@@ -172,7 +174,6 @@ struct SwipeAnimatorUX {
     let minExitVelocity = CGFloat(800.0)
     let recenterAnimationDuration = NSTimeInterval(0.15)
 }
-
 
 private protocol SwipeAnimatorDelegate {
     func swipeAnimator(animator: SwipeAnimator, viewDidExitContainerBounds: UIView)
@@ -239,7 +240,7 @@ private class SwipeAnimator: NSObject {
             let velocity = recognizer.velocityInView(self.container)
             let actualVelocity = max(abs(velocity.x), self.ux.minExitVelocity)
 
-            if (actualVelocity < self.ux.minExitVelocity || abs(self.animatingView.center.x - self.container.center.x) < self.ux.deleteThreshold) {
+            if (actualVelocity < self.ux.minExitVelocity || abs(self.animatingView.center.x - self.originalCenter.x) < self.ux.deleteThreshold) {
                 UIView.animateWithDuration(self.ux.recenterAnimationDuration, animations: {
                     self.animatingView.transform = CGAffineTransformIdentity
                     self.animatingView.center = self.startLocation
@@ -254,7 +255,7 @@ private class SwipeAnimator: NSObject {
             let edgeX = velocity.x > 0 ? CGRectGetMaxX(self.container.frame) :
                 CGRectGetMinX(self.container.frame)
             var distance
-            = (self.animatingView.frame.size.width / 2) + abs(self.animatingView.center.x - edgeX)
+            = (self.animatingView.center.x / 2) + abs(self.animatingView.center.x - edgeX)
 
             // Determine which way we need to travel
             distance *= velocity.x > 0 ? 1 : -1
@@ -292,12 +293,14 @@ class TabTrayController: UIViewController, UITabBarDelegate, UICollectionViewDel
     var collectionView: UICollectionView!
     var profile: Profile!
     var screenshotHelper: ScreenshotHelper!
+    var numberOfColumns: Int!
 
     var navBar: UINavigationBar!
 
     override func viewDidLoad() {
         view.isAccessibilityElement = true
         view.accessibilityLabel = NSLocalizedString("Tabs Tray", comment: "Accessibility label for the Tabs Tray view.")
+
 
         navBar = UINavigationBar()
 
@@ -323,16 +326,15 @@ class TabTrayController: UIViewController, UITabBarDelegate, UICollectionViewDel
         
         navBar.pushNavigationItem(navItem, animated: false)
 
-
+        numberOfColumns = numberOfColumnsForCurrentSize()
         let flowLayout = UICollectionViewFlowLayout()
         collectionView = UICollectionView(frame: view.frame, collectionViewLayout: flowLayout)
         collectionView.dataSource = self
-        // collectionView.delegate = self
+        collectionView.delegate = self
         collectionView.registerClass(CustomCell.self, forCellWithReuseIdentifier: CellIdentifier)
         collectionView.contentInset = UIEdgeInsets(top: AppConstants.StatusBarHeight + AppConstants.ToolbarHeight, left: 0, bottom: 0, right: 0)
 
         collectionView.backgroundColor = TabTrayControllerUX.BackgroundColor
-
 
         view.addSubview(collectionView)
         view.addSubview(navBar)
@@ -347,6 +349,17 @@ class TabTrayController: UIViewController, UITabBarDelegate, UICollectionViewDel
         collectionView.snp_makeConstraints { make in
             make.top.equalTo(self.view)
             make.left.right.bottom.equalTo(self.view)
+        }
+
+    }
+
+    private func numberOfColumnsForCurrentSize() -> Int {
+        if self.traitCollection.verticalSizeClass == UIUserInterfaceSizeClass.Compact {
+            return TabTrayControllerUX.NumberOfColumnsRegular
+        } else if self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClass.Compact {
+            return TabTrayControllerUX.NumberOfColumnsCompact
+        } else {
+            return TabTrayControllerUX.NumberOfColumnsRegular
         }
     }
 
@@ -393,20 +406,43 @@ class TabTrayController: UIViewController, UITabBarDelegate, UICollectionViewDel
     }
 
     func collectionView(collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAtIndexPath indexPath: NSIndexPath) -> CGSize {
-        return CGSizeMake(collectionView.bounds.width / 2 - TabTrayControllerUX.Margin * 1.5, TabTrayControllerUX.CellHeight)
+        let cellWidth = (collectionView.bounds.width - TabTrayControllerUX.Margin * CGFloat(numberOfColumns + 1)) / CGFloat(numberOfColumns)
+        return CGSizeMake(cellWidth, TabTrayControllerUX.CellHeight)
     }
 
     func collectionView(collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAtIndex section: Int) -> UIEdgeInsets {
         return UIEdgeInsetsMake(TabTrayControllerUX.Margin, TabTrayControllerUX.Margin, TabTrayControllerUX.Margin, TabTrayControllerUX.Margin)
     }
 
+    override func willRotateToInterfaceOrientation(toInterfaceOrientation: UIInterfaceOrientation, duration: NSTimeInterval) {
+        collectionView.collectionViewLayout.invalidateLayout()
+    }
+
+    override func didRotateFromInterfaceOrientation(fromInterfaceOrientation: UIInterfaceOrientation) {
+        collectionView.layoutSubviews()
+        for cell in collectionView.visibleCells() {
+            if let tab = cell as? CustomCell {
+                tab.setupFrames()
+            }
+        }
+    }
+
+    override func traitCollectionDidChange(previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        numberOfColumns = numberOfColumnsForCurrentSize()
+        collectionView.layoutIfNeeded()
+        for cell in collectionView.visibleCells() {
+            if let tab = cell as? CustomCell {
+                tab.setupFrames()
+            }
+        }
+    }
 }
 
 extension TabTrayController: Transitionable {
     private func getTransitionCell(options: TransitionOptions, browser: Browser?) -> CustomCell {
         var transitionCell: CustomCell
         if let cell = options.moving as? CustomCell {
-            println("Reuse")
             transitionCell = cell
         } else {
             transitionCell = CustomCell(frame: options.container!.frame)
@@ -415,11 +451,9 @@ extension TabTrayController: Transitionable {
 
         if let browser = browser {
             transitionCell.background.image = screenshotHelper.takeScreenshot(browser, aspectRatio: 0, quality: 1)
-        } else {
-            transitionCell.backgroundColor = UIColor.greenColor()
         }
-        transitionCell.titleText.text = browser?.displayTitle
 
+        transitionCell.titleText.text = browser?.displayTitle
         return transitionCell
     }
 
@@ -431,34 +465,32 @@ extension TabTrayController: Transitionable {
             // cell.backgroundHolder.layer.cornerRadius = TabTrayControllerUX.CornerRadius
             cell.showFullscreen(container, table: collectionView)
             cell.layoutIfNeeded()
+            cell.title.transform = CGAffineTransformTranslate(CGAffineTransformIdentity, 0, -cell.title.frame.height)
         }
 
-        // Fade the toolbar
-        navBar.alpha = 0
 
-        collectionView.backgroundColor = UIColor.clearColor()
+        // Scroll the toolbar off the top
+        navBar.alpha = 0
+        collectionView.alpha = 0
     }
 
     func transitionableWillShow(transitionable: Transitionable, options: TransitionOptions) {
         if let container = options.container {
             // Create a fake cell that is at the selected index
             let cell = getTransitionCell(options, browser: tabManager.selectedTab)
-            container.addSubview(cell)
-            // cell.backgroundHolder.layer.cornerRadius = TabTrayControllerUX.CornerRadius
+            collectionView.layoutSubviews()
             cell.showAt(tabManager.selectedIndex, container: container, table: collectionView)
             cell.layoutIfNeeded()
         }
 
         // Scroll the toolbar on from the top
         navBar.alpha = 1
-        navBar.transform = CGAffineTransformIdentity
-
-        collectionView.backgroundColor = TabTrayControllerUX.BackgroundColor
+        collectionView.alpha = 1
     }
 
     func transitionableWillComplete(transitionable: Transitionable, options: TransitionOptions) {
         if let cell = options.moving {
-            // cell.removeFromSuperview()
+          cell.removeFromSuperview()
         }
     }
 }
