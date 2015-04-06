@@ -1044,6 +1044,9 @@ extension BrowserViewController : UIViewControllerTransitioningDelegate {
 }
 
 extension BrowserViewController : Transitionable {
+    func transitionablePreShow(transitionable: Transitionable, options: TransitionOptions) {
+    }
+
     func transitionableWillShow(transitionable: Transitionable, options: TransitionOptions) {
         view.alpha = 1
 

@@ -10,6 +10,7 @@ class TransitionOptions {
 
 @objc
 protocol Transitionable : class {
+    func transitionablePreShow(transitionable: Transitionable, options: TransitionOptions)
     func transitionableWillHide(transitionable: Transitionable, options: TransitionOptions)
     func transitionableWillShow(transitionable: Transitionable, options: TransitionOptions)
     func transitionableWillComplete(transitionable: Transitionable, options: TransitionOptions)
@@ -41,6 +42,7 @@ class TransitionManager: NSObject, UIViewControllerAnimatedTransitioning  {
 
                 let duration = self.transitionDuration(transitionContext)
 
+                to.transitionablePreShow(to, options: options)
                 UIView.animateWithDuration(duration, delay: 0, usingSpringWithDamping: 0.95, initialSpringVelocity: 0, options: nil, animations: { () -> Void in
                         to.transitionableWillShow(to, options: options)
                         from.transitionableWillHide(from, options: options)

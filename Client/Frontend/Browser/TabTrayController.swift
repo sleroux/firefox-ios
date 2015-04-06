@@ -440,6 +440,10 @@ class TabTrayController: UIViewController, UITabBarDelegate, UICollectionViewDel
 }
 
 extension TabTrayController: Transitionable {
+    func transitionablePreShow(transitionable: Transitionable, options: TransitionOptions) {
+        self.collectionView.layoutSubviews();
+    }
+
     private func getTransitionCell(options: TransitionOptions, browser: Browser?) -> CustomCell {
         var transitionCell: CustomCell
         if let cell = options.moving as? CustomCell {
@@ -478,7 +482,7 @@ extension TabTrayController: Transitionable {
         if let container = options.container {
             // Create a fake cell that is at the selected index
             let cell = getTransitionCell(options, browser: tabManager.selectedTab)
-            collectionView.layoutSubviews()
+//            collectionView.layoutSubviews()
             cell.showAt(tabManager.selectedIndex, container: container, table: collectionView)
             cell.layoutIfNeeded()
         }
